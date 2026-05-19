@@ -1,0 +1,1727 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>APQP/PPAP 管理系統 - Dashboard</title>
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Microsoft JhengHei', sans-serif; }
+        .fade-in { animation: fadeIn 0.5s ease-in; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+        .progress-ring { transform: rotate(-90deg); }
+        .badge { 
+            display: inline-flex; 
+            align-items: center; 
+            padding: 4px 12px; 
+            border-radius: 16px; 
+            font-size: 12px; 
+            font-weight: 600; 
+        }
+        .badge-pending { background: #fff3cd; color: #856404; }
+        .badge-inProgress { background: #cfe2ff; color: #084298; }
+        .badge-completed { background: #d1e7dd; color: #0f5132; }
+        .badge-overdue { background: #f8d7da; color: #842029; }
+        .project-card {
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+        .project-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 12px 24px rgba(0, 0, 0, 0.15);
+        }
+        .lang-select {
+            appearance: none;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23333' d='M6 9L1 4h10z'/%3E%3C/svg%3E");
+            background-repeat: no-repeat;
+            background-position: right 8px center;
+            padding-right: 28px;
+        }
+    </style>
+</head>
+<body class="bg-gray-50">
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, createContext, useContext } = React;
+
+        // ==================== 多語系配置 ====================
+        const translations = {
+            zh: {
+                // 系統基本
+                appTitle: "APQP/PPAP 文件管理系統",
+                subtitle: "金屬精密沖壓業 - APQP 3rd Edition",
+                login: "登入系統",
+                logout: "登出",
+                welcome: "歡迎回來",
+                backToDashboard: "返回專案列表",
+                
+                // 導航
+                dashboard: "專案總覽",
+                projects: "所有專案",
+                equipment: "設備管理",
+                users: "使用者管理",
+                settings: "系統設定",
+                
+                // 角色與部門
+                admin: "管理員",
+                manager: "主管",
+                member: "組員",
+                guest: "訪客",
+                sales: "業務部",
+                engineering: "工程部",
+                quality: "品保部",
+                production: "生產部",
+                management: "管理層",
+                
+                // 專案相關
+                projectName: "專案名稱",
+                partName: "零件名稱",
+                partNumber: "零件編號",
+                revision: "版次",
+                material: "材料",
+                location: "製造地點",
+                stage: "當前階段",
+                progress: "完成進度",
+                status: "狀態",
+                weight: "零件淨重 (kg)",
+                drawingDate: "圖紙日期",
+                submissionLevel: "提交等級",
+                
+                // Tab 頁面
+                pswInfo: "PSW 基本資料",
+                apqpStages: "APQP 五階段追蹤",
+                ppapChecklist: "PPAP 18項查核",
+                documents: "文件庫管理",
+                
+                // APQP 階段
+                stage1: "階段1：計畫與定義",
+                stage2: "階段2：產品設計開發",
+                stage3: "階段3：製程設計開發",
+                stage4: "階段4：產品與製程驗證",
+                stage5: "階段5：回饋與矯正",
+                
+                // 狀態標籤
+                pending: "待處理",
+                inProgress: "進行中",
+                completed: "已完成",
+                overdue: "逾期",
+                approved: "已核准",
+                rejected: "已退回",
+                draft: "草稿",
+                underReview: "待審核",
+                
+                // 操作
+                newProject: "新建專案",
+                viewDetail: "查看詳情",
+                edit: "編輯",
+                delete: "刪除",
+                save: "儲存",
+                cancel: "取消",
+                approve: "核准",
+                reject: "退回",
+                upload: "上傳",
+                download: "下載",
+                search: "搜尋專案...",
+                filter: "篩選",
+                export: "匯出",
+                exportExcel: "匯出 Excel",
+                
+                // 統計
+                totalProjects: "專案總數",
+                activeProjects: "進行中",
+                completedProjects: "已完成",
+                overdueProjects: "逾期項目",
+                
+                // 訊息提示
+                stageLocked: "🔒 請先完成前階段主管審核",
+                weightFormat: "請輸入至小數點後四位 (例: 0.0245)",
+                uploadSuccess: "上傳成功",
+                saveSuccess: "儲存成功",
+                approveSuccess: "核准成功",
+                deleteConfirm: "確定要刪除嗎？",
+                
+                // 文件相關
+                uploadFile: "上傳文件",
+                dragDropHint: "點擊或拖曳檔案至此",
+                supportedFormats: "支援格式: JPG, PNG, PDF",
+                noDocuments: "尚無上傳文件",
+                uploadedDate: "上傳日期",
+                fileSize: "檔案大小",
+                
+                // PPAP 項目
+                ppapItem1: "設計記錄",
+                ppapItem2: "工程更改文件",
+                ppapItem3: "客戶工程核准",
+                ppapItem4: "設計 FMEA",
+                ppapItem5: "製程流程圖",
+                ppapItem6: "製程 FMEA",
+                ppapItem7: "控制計畫",
+                ppapItem8: "量測系統分析 (MSA)",
+                ppapItem9: "全尺寸量測結果",
+                ppapItem10: "材料/性能測試報告",
+                ppapItem11: "初始製程能力 (Cpk)",
+                ppapItem12: "合格實驗室文件",
+                ppapItem13: "外觀批准報告 (AAR)",
+                ppapItem14: "零件樣品",
+                ppapItem15: "標準樣品",
+                ppapItem16: "檢查輔助具",
+                ppapItem17: "客戶特殊要求記錄",
+                ppapItem18: "零件提交保證書 (PSW)",
+                
+                // 其他
+                selectLanguage: "選擇語言",
+                selectRole: "選擇角色",
+                username: "使用者名稱",
+                enterUsername: "請輸入您的名稱",
+                responsible: "負責部門",
+                checkpoint: "查核重點",
+                actions: "操作",
+                viewDocument: "查看文件",
+                signatureUpload: "上傳簽名檔",
+            },
+            en: {
+                appTitle: "APQP/PPAP Management System",
+                subtitle: "Metal Stamping - APQP 3rd Edition",
+                login: "Login",
+                logout: "Logout",
+                welcome: "Welcome back",
+                backToDashboard: "Back to Projects",
+                
+                dashboard: "Dashboard",
+                projects: "Projects",
+                equipment: "Equipment",
+                users: "Users",
+                settings: "Settings",
+                
+                admin: "Admin",
+                manager: "Manager",
+                member: "Member",
+                guest: "Guest",
+                sales: "Sales",
+                engineering: "Engineering",
+                quality: "Quality",
+                production: "Production",
+                management: "Management",
+                
+                projectName: "Project Name",
+                partName: "Part Name",
+                partNumber: "Part Number",
+                revision: "Revision",
+                material: "Material",
+                location: "Location",
+                stage: "Stage",
+                progress: "Progress",
+                status: "Status",
+                weight: "Net Weight (kg)",
+                drawingDate: "Drawing Date",
+                submissionLevel: "Submission Level",
+                
+                pswInfo: "PSW Information",
+                apqpStages: "APQP 5 Stages",
+                ppapChecklist: "PPAP 18 Items",
+                documents: "Documents",
+                
+                stage1: "Stage 1: Plan & Define",
+                stage2: "Stage 2: Product Design",
+                stage3: "Stage 3: Process Design",
+                stage4: "Stage 4: Validation",
+                stage5: "Stage 5: Feedback",
+                
+                pending: "Pending",
+                inProgress: "In Progress",
+                completed: "Completed",
+                overdue: "Overdue",
+                approved: "Approved",
+                rejected: "Rejected",
+                draft: "Draft",
+                underReview: "Under Review",
+                
+                newProject: "New Project",
+                viewDetail: "View Details",
+                edit: "Edit",
+                delete: "Delete",
+                save: "Save",
+                cancel: "Cancel",
+                approve: "Approve",
+                reject: "Reject",
+                upload: "Upload",
+                download: "Download",
+                search: "Search projects...",
+                filter: "Filter",
+                export: "Export",
+                exportExcel: "Export Excel",
+                
+                totalProjects: "Total Projects",
+                activeProjects: "Active",
+                completedProjects: "Completed",
+                overdueProjects: "Overdue",
+                
+                stageLocked: "🔒 Previous stage approval required",
+                weightFormat: "Enter 4 decimal places (e.g., 0.0245)",
+                uploadSuccess: "Upload successful",
+                saveSuccess: "Save successful",
+                approveSuccess: "Approval successful",
+                deleteConfirm: "Are you sure you want to delete?",
+                
+                uploadFile: "Upload File",
+                dragDropHint: "Click or drag file here",
+                supportedFormats: "Supported: JPG, PNG, PDF",
+                noDocuments: "No documents uploaded",
+                uploadedDate: "Upload Date",
+                fileSize: "File Size",
+                
+                ppapItem1: "Design Records",
+                ppapItem2: "Engineering Change Documents",
+                ppapItem3: "Customer Engineering Approval",
+                ppapItem4: "Design FMEA",
+                ppapItem5: "Process Flow Diagram",
+                ppapItem6: "Process FMEA",
+                ppapItem7: "Control Plan",
+                ppapItem8: "Measurement System Analysis (MSA)",
+                ppapItem9: "Dimensional Results",
+                ppapItem10: "Material/Performance Test Results",
+                ppapItem11: "Initial Process Capability (Cpk)",
+                ppapItem12: "Qualified Laboratory Documentation",
+                ppapItem13: "Appearance Approval Report (AAR)",
+                ppapItem14: "Sample Production Parts",
+                ppapItem15: "Master Sample",
+                ppapItem16: "Checking Aids",
+                ppapItem17: "Customer-Specific Requirements",
+                ppapItem18: "Part Submission Warrant (PSW)",
+                
+                selectLanguage: "Language",
+                selectRole: "Select Role",
+                username: "Username",
+                enterUsername: "Enter your name",
+                responsible: "Responsible",
+                checkpoint: "Checkpoint",
+                actions: "Actions",
+                viewDocument: "View Document",
+                signatureUpload: "Upload Signature",
+            },
+            th: {
+                appTitle: "ระบบจัดการ APQP/PPAP",
+                subtitle: "โลหะปั๊มเจาะ - APQP รุ่นที่ 3",
+                login: "เข้าสู่ระบบ",
+                logout: "ออกจากระบบ",
+                welcome: "ยินดีต้อนรับกลับ",
+                backToDashboard: "กลับไปที่โครงการ",
+                
+                dashboard: "แดชบอร์ด",
+                projects: "โครงการ",
+                equipment: "อุปกรณ์",
+                users: "ผู้ใช้",
+                settings: "การตั้งค่า",
+                
+                admin: "ผู้ดูแลระบบ",
+                manager: "ผู้จัดการ",
+                member: "สมาชิก",
+                guest: "ผู้เยี่ยมชม",
+                sales: "ฝ่ายขาย",
+                engineering: "วิศวกรรม",
+                quality: "คุณภาพ",
+                production: "การผลิต",
+                management: "ฝ่ายบริหาร",
+                
+                projectName: "ชื่อโครงการ",
+                partName: "ชื่อชิ้นส่วน",
+                partNumber: "รหัสชิ้นส่วน",
+                revision: "แก้ไขครั้งที่",
+                material: "วัสดุ",
+                location: "สถานที่ผลิต",
+                stage: "ขั้นตอน",
+                progress: "ความคืบหน้า",
+                status: "สถานะ",
+                weight: "น้ำหนัก (kg)",
+                drawingDate: "วันที่แบบ",
+                submissionLevel: "ระดับการส่ง",
+                
+                pswInfo: "ข้อมูล PSW",
+                apqpStages: "5 ขั้นตอน APQP",
+                ppapChecklist: "PPAP 18 รายการ",
+                documents: "เอกสาร",
+                
+                stage1: "ขั้นที่ 1: วางแผน",
+                stage2: "ขั้นที่ 2: ออกแบบผลิตภัณฑ์",
+                stage3: "ขั้นที่ 3: ออกแบบกระบวนการ",
+                stage4: "ขั้นที่ 4: การตรวจสอบ",
+                stage5: "ขั้นที่ 5: ข้อเสนอแนะ",
+                
+                pending: "รอดำเนินการ",
+                inProgress: "กำลังดำเนินการ",
+                completed: "เสร็จสิ้น",
+                overdue: "เกินกำหนด",
+                approved: "อนุมัติแล้ว",
+                rejected: "ปฏิเสธ",
+                draft: "ฉบับร่าง",
+                underReview: "รอการตรวจสอบ",
+                
+                newProject: "โครงการใหม่",
+                viewDetail: "ดูรายละเอียด",
+                edit: "แก้ไข",
+                delete: "ลบ",
+                save: "บันทึก",
+                cancel: "ยกเลิก",
+                approve: "อนุมัติ",
+                reject: "ปฏิเสธ",
+                upload: "อัปโหลด",
+                download: "ดาวน์โหลด",
+                search: "ค้นหาโครงการ...",
+                filter: "กรอง",
+                export: "ส่งออก",
+                exportExcel: "ส่งออก Excel",
+                
+                totalProjects: "โครงการทั้งหมด",
+                activeProjects: "กำลังดำเนินการ",
+                completedProjects: "เสร็จสิ้น",
+                overdueProjects: "เกินกำหนด",
+                
+                stageLocked: "🔒 กรุณาอนุมัติขั้นก่อนหน้าก่อน",
+                weightFormat: "ป้อนทศนิยม 4 ตำแหน่ง (เช่น 0.0245)",
+                uploadSuccess: "อัปโหลดสำเร็จ",
+                saveSuccess: "บันทึกสำเร็จ",
+                approveSuccess: "อนุมัติสำเร็จ",
+                deleteConfirm: "คุณแน่ใจหรือไม่ที่จะลบ?",
+                
+                uploadFile: "อัปโหลดไฟล์",
+                dragDropHint: "คลิกหรือลากไฟล์มาที่นี่",
+                supportedFormats: "รองรับ: JPG, PNG, PDF",
+                noDocuments: "ไม่มีเอกสาร",
+                uploadedDate: "วันที่อัปโหลด",
+                fileSize: "ขนาดไฟล์",
+                
+                ppapItem1: "บันทึกการออกแบบ",
+                ppapItem2: "เอกสารการเปลี่ยนแปลงทางวิศวกรรม",
+                ppapItem3: "การอนุมัติวิศวกรรมจากลูกค้า",
+                ppapItem4: "Design FMEA",
+                ppapItem5: "แผนผังกระบวนการ",
+                ppapItem6: "Process FMEA",
+                ppapItem7: "แผนควบคุม",
+                ppapItem8: "การวิเคราะห์ระบบการวัด (MSA)",
+                ppapItem9: "ผลการวัดขนาด",
+                ppapItem10: "ผลการทดสอบวัสดุ/ประสิทธิภาพ",
+                ppapItem11: "ความสามารถกระบวนการเริ่มต้น (Cpk)",
+                ppapItem12: "เอกสารห้องปฏิบัติการที่ผ่านการรับรอง",
+                ppapItem13: "รายงานการอนุมัติลักษณะภายนอก (AAR)",
+                ppapItem14: "ตัวอย่างชิ้นส่วนจากการผลิต",
+                ppapItem15: "ตัวอย่างมาตรฐาน",
+                ppapItem16: "อุปกรณ์ช่วยตรวจสอบ",
+                ppapItem17: "ข้อกำหนดเฉพาะของลูกค้า",
+                ppapItem18: "ใบรับประกันการส่งชิ้นส่วน (PSW)",
+                
+                selectLanguage: "เลือกภาษา",
+                selectRole: "เลือกบทบาท",
+                username: "ชื่อผู้ใช้",
+                enterUsername: "กรอกชื่อของคุณ",
+                responsible: "ผู้รับผิดชอบ",
+                checkpoint: "จุดตรวจสอบ",
+                actions: "การดำเนินการ",
+                viewDocument: "ดูเอกสาร",
+                signatureUpload: "อัปโหลดลายเซ็น",
+            }
+        };
+
+        // ==================== Context ====================
+        const AppContext = createContext();
+
+        // ==================== 模擬設備數據 ====================
+        const mockEquipment = [
+            {
+                id: 1,
+                name: "200T沖床-A01",
+                type: "沖床",
+                model: "AIDA NS1-200",
+                capacity: "200噸",
+                location: "精密沖壓 A 線",
+                status: "active",
+                purchaseDate: "2020-03-15",
+                lastMaintenance: "2024-04-10",
+                nextMaintenance: "2024-07-10",
+                usageHours: 12450,
+                projects: ["P/N-12345678", "P/N-11223344"],
+                history: [
+                    { date: "2024-04-10", type: "維護", description: "定期保養、更換液壓油", operator: "維護部" },
+                    { date: "2024-03-01", type: "校正", description: "精度校正", operator: "品保部" },
+                    { date: "2024-01-15", type: "維修", description: "更換壓力感測器", operator: "維護部" },
+                ],
+                specifications: {
+                    maxForce: "200噸",
+                    strokeLength: "150mm",
+                    speedRange: "20-120 SPM",
+                    boltsterSize: "800x600mm",
+                },
+                cpkData: [
+                    { date: "2024-05-01", value: 1.45, status: "合格" },
+                    { date: "2024-04-01", value: 1.38, status: "合格" },
+                    { date: "2024-03-01", value: 1.52, status: "合格" },
+                ]
+            },
+            {
+                id: 2,
+                name: "200T沖床-B02",
+                type: "沖床",
+                model: "KOMATSU H1F-200",
+                capacity: "200噸",
+                location: "精密沖壓 B 線",
+                status: "maintenance",
+                purchaseDate: "2021-06-20",
+                lastMaintenance: "2024-05-15",
+                nextMaintenance: "2024-08-15",
+                usageHours: 8920,
+                projects: ["P/N-87654321", "P/N-55667788"],
+                history: [
+                    { date: "2024-05-15", type: "維護", description: "年度大保養", operator: "維護部" },
+                    { date: "2024-02-20", type: "校正", description: "精度校正", operator: "品保部" },
+                ],
+                specifications: {
+                    maxForce: "200噸",
+                    strokeLength: "180mm",
+                    speedRange: "15-100 SPM",
+                    boltsterSize: "900x700mm",
+                },
+                cpkData: [
+                    { date: "2024-04-15", value: 1.41, status: "合格" },
+                    { date: "2024-03-15", value: 1.35, status: "合格" },
+                ]
+            },
+            {
+                id: 3,
+                name: "OMM-M02",
+                type: "量測儀",
+                model: "Mitutoyo QV-404 Pro",
+                capacity: "精度 ±0.001mm",
+                location: "品保室",
+                status: "active",
+                purchaseDate: "2022-01-10",
+                lastMaintenance: "2024-05-01",
+                nextMaintenance: "2024-08-01",
+                usageHours: 5630,
+                projects: ["P/N-12345678", "P/N-55667788"],
+                history: [
+                    { date: "2024-05-01", type: "校正", description: "外部校正證書更新", operator: "品保部" },
+                    { date: "2024-02-01", type: "維護", description: "清潔保養", operator: "品保部" },
+                ],
+                specifications: {
+                    measurementRange: "400x400x300mm",
+                    accuracy: "±(2+L/200)μm",
+                    resolution: "0.1μm",
+                    probeType: "觸發式探針",
+                },
+                msaData: [
+                    { date: "2024-05-01", gageRR: 8.5, status: "合格" },
+                    { date: "2024-04-01", gageRR: 9.2, status: "合格" },
+                    { date: "2024-03-01", gageRR: 7.8, status: "合格" },
+                ]
+            },
+            {
+                id: 4,
+                name: "OMM-M03",
+                type: "量測儀",
+                model: "Keyence IM-8000",
+                capacity: "精度 ±0.002mm",
+                location: "品保室",
+                status: "active",
+                purchaseDate: "2023-03-20",
+                lastMaintenance: "2024-04-20",
+                nextMaintenance: "2024-07-20",
+                usageHours: 3210,
+                projects: ["P/N-55667788"],
+                history: [
+                    { date: "2024-04-20", type: "校正", description: "標準件校正", operator: "品保部" },
+                ],
+                specifications: {
+                    measurementRange: "600x400x300mm",
+                    accuracy: "±3μm",
+                    resolution: "0.5μm",
+                    probeType: "非接觸式光學",
+                },
+                msaData: [
+                    { date: "2024-04-20", gageRR: 11.2, status: "不合格" },
+                    { date: "2024-03-20", gageRR: 9.8, status: "合格" },
+                ]
+            },
+        ];
+
+        // ==================== 模擬專案數據 ====================
+        const mockProjects = [
+            {
+                id: 1,
+                partName: "精密沖壓件A",
+                partNumber: "P/N-12345678",
+                revision: "Rev. 03",
+                material: "SUS304",
+                location: "精密沖壓 A 線",
+                stage: 3,
+                totalStages: 5,
+                progress: 65,
+                status: "inProgress",
+                equipment: ["200T沖床-A01", "OMM-M02"],
+                createdDate: "2024-01-15",
+                dueDate: "2024-06-30",
+                responsible: "engineering",
+                apqpCompleted: 12,
+                apqpTotal: 15,
+                ppapCompleted: 8,
+                ppapTotal: 18,
+            },
+            {
+                id: 2,
+                partName: "精密沖壓件B",
+                partNumber: "P/N-87654321",
+                revision: "Rev. 01",
+                material: "C5191",
+                location: "精密沖壓 B 線",
+                stage: 1,
+                totalStages: 5,
+                progress: 20,
+                status: "pending",
+                equipment: ["200T沖床-B02"],
+                createdDate: "2024-05-10",
+                dueDate: "2024-12-31",
+                responsible: "quality",
+                apqpCompleted: 3,
+                apqpTotal: 15,
+                ppapCompleted: 0,
+                ppapTotal: 18,
+            },
+            {
+                id: 3,
+                partName: "連接器外殼",
+                partNumber: "P/N-11223344",
+                revision: "Rev. 02",
+                material: "SUS304",
+                location: "精密沖壓 A 線",
+                stage: 5,
+                totalStages: 5,
+                progress: 95,
+                status: "completed",
+                equipment: ["200T沖床-A01"],
+                createdDate: "2023-11-20",
+                dueDate: "2024-04-30",
+                responsible: "sales",
+                apqpCompleted: 15,
+                apqpTotal: 15,
+                ppapCompleted: 18,
+                ppapTotal: 18,
+            },
+            {
+                id: 4,
+                partName: "電子支架",
+                partNumber: "P/N-55667788",
+                revision: "Rev. 04",
+                material: "C5191",
+                location: "精密沖壓 B 線",
+                stage: 4,
+                totalStages: 5,
+                progress: 45,
+                status: "overdue",
+                equipment: ["200T沖床-B02", "OMM-M03"],
+                createdDate: "2024-02-01",
+                dueDate: "2024-05-15",
+                responsible: "engineering",
+                apqpCompleted: 10,
+                apqpTotal: 15,
+                ppapCompleted: 6,
+                ppapTotal: 18,
+            },
+        ];
+
+        // ==================== 主應用 ====================
+        function App() {
+            const [language, setLanguage] = useState('zh');
+            const [currentUser, setCurrentUser] = useState(null);
+            const [projects, setProjects] = useState(mockProjects);
+            const [equipment, setEquipment] = useState(mockEquipment);
+            const [users, setUsers] = useState([
+                { id: 1, username: 'admin', name: '系統管理員', role: 'admin', department: 'management', email: 'admin@company.com', signature: null, status: 'active' },
+                { id: 2, username: 'eng_manager', name: '工程主管', role: 'manager', department: 'engineering', email: 'eng@company.com', signature: null, status: 'active' },
+                { id: 3, username: 'qa_member', name: '品保組員', role: 'member', department: 'quality', email: 'qa@company.com', signature: null, status: 'active' },
+                { id: 4, username: 'sales_member', name: '業務組員', role: 'member', department: 'sales', email: 'sales@company.com', signature: null, status: 'active' },
+            ]);
+            const [notifications, setNotifications] = useState([]);
+            const [searchTerm, setSearchTerm] = useState('');
+            const [filterStatus, setFilterStatus] = useState('all');
+            const [currentView, setCurrentView] = useState('dashboard');
+            const [selectedProject, setSelectedProject] = useState(null);
+
+            const t = (key) => translations[language][key] || key;
+
+            // 篩選邏輯
+            const filteredProjects = projects.filter(project => {
+                const matchSearch = project.partName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                                   project.partNumber.toLowerCase().includes(searchTerm.toLowerCase());
+                const matchStatus = filterStatus === 'all' || project.status === filterStatus;
+                return matchSearch && matchStatus;
+            });
+
+            const handleViewProject = (project) => {
+                setSelectedProject(project);
+                setCurrentView('project');
+            };
+
+            const handleBackToDashboard = () => {
+                setCurrentView('dashboard');
+                setSelectedProject(null);
+            };
+
+            // 通知系統
+            const addNotification = (message, type = 'info') => {
+                const id = Date.now();
+                setNotifications(prev => [...prev, { id, message, type, timestamp: new Date() }]);
+                setTimeout(() => {
+                    setNotifications(prev => prev.filter(n => n.id !== id));
+                }, 5000);
+            };
+
+            // Email 模擬通知
+            const sendEmailNotification = (recipients, subject, message) => {
+                console.log('📧 Email 通知:', { recipients, subject, message });
+                addNotification(`已發送 Email 至 ${recipients.join(', ')}`, 'success');
+            };
+
+            if (!currentUser) {
+                return <LoginPage setCurrentUser={setCurrentUser} t={t} language={language} setLanguage={setLanguage} />;
+            }
+
+            return (
+                <AppContext.Provider value={{ 
+                    t, language, setLanguage, currentUser, projects, setProjects,
+                    equipment, setEquipment, users, setUsers, notifications,
+                    selectedProject, setSelectedProject, handleViewProject, handleBackToDashboard,
+                    addNotification, sendEmailNotification
+                }}>
+                    <div className="min-h-screen bg-gray-50">
+                        <Navbar setCurrentUser={setCurrentUser} currentView={currentView} setCurrentView={setCurrentView} />
+                        <NotificationPanel notifications={notifications} />
+                        <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+                            {currentView === 'dashboard' && (
+                                <Dashboard 
+                                    filteredProjects={filteredProjects}
+                                    searchTerm={searchTerm}
+                                    setSearchTerm={setSearchTerm}
+                                    filterStatus={filterStatus}
+                                    setFilterStatus={setFilterStatus}
+                                />
+                            )}
+                            {currentView === 'project' && <ProjectDetail />}
+                            {currentView === 'equipment' && <EquipmentManagement />}
+                            {currentView === 'users' && <UserManagement />}
+                        </main>
+                    </div>
+                </AppContext.Provider>
+            );
+        }
+
+        // ==================== 登入頁面 ====================
+        function LoginPage({ setCurrentUser, t, language, setLanguage }) {
+            const [username, setUsername] = useState('');
+            const [selectedRole, setSelectedRole] = useState('admin');
+
+            const handleLogin = () => {
+                if (username.trim()) {
+                    const deptMap = {
+                        admin: 'management',
+                        manager: 'engineering',
+                        member: 'quality',
+                        guest: 'sales'
+                    };
+                    setCurrentUser({ 
+                        username: username.trim(), 
+                        role: selectedRole,
+                        department: deptMap[selectedRole]
+                    });
+                }
+            };
+
+            return (
+                <div className="min-h-screen bg-gradient-to-br from-blue-600 via-blue-500 to-purple-600 flex items-center justify-center p-4">
+                    <div className="bg-white rounded-2xl shadow-2xl p-8 w-full max-w-md fade-in">
+                        {/* Logo 區域 */}
+                        <div className="text-center mb-8">
+                            <div className="w-20 h-20 bg-blue-600 rounded-2xl mx-auto mb-4 flex items-center justify-center text-white text-3xl font-bold">
+                                AP
+                            </div>
+                            <h1 className="text-2xl font-bold text-gray-800 mb-1">{t('appTitle')}</h1>
+                            <p className="text-sm text-gray-600">{t('subtitle')}</p>
+                        </div>
+
+                        {/* 語言選擇 */}
+                        <div className="mb-6">
+                            <label className="block text-sm font-semibold text-gray-700 mb-2">
+                                🌐 {t('selectLanguage')}
+                            </label>
+                            <select 
+                                value={language} 
+                                onChange={(e) => setLanguage(e.target.value)}
+                                className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-blue-500 focus:outline-none lang-select transition"
+                            >
+                                <option value="zh">🇹🇼 繁體中文</option>
+                                <option value="en">🇺🇸 English</option>
+                                <option value="th">🇹🇭 ภาษาไทย</option>
+                            </select>
+                        </div>
+
+                        {/* 使用者名稱輸入 */}
+                        <div className="mb-6">
+                            <label className="block text-sm font-semibold text-gray-700 mb-2">
+                                👤 {t('username')}
+                            </label>
+                            <input
+                                type="text"
+                                placeholder={t('enterUsername')}
+                                value={username}
+                                onChange={(e) => setUsername(e.target.value)}
+                                onKeyPress={(e) => e.key === 'Enter' && handleLogin()}
+                                className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-blue-500 focus:outline-none transition"
+                            />
+                        </div>
+
+                        {/* 角色選擇 */}
+                        <div className="mb-6">
+                            <label className="block text-sm font-semibold text-gray-700 mb-3">
+                                🎭 {t('selectRole')}
+                            </label>
+                            <div className="grid grid-cols-2 gap-3">
+                                {['admin', 'manager', 'member', 'guest'].map(role => (
+                                    <button
+                                        key={role}
+                                        onClick={() => setSelectedRole(role)}
+                                        className={`px-4 py-3 rounded-xl font-semibold transition-all ${
+                                            selectedRole === role 
+                                                ? 'bg-blue-600 text-white shadow-lg scale-105' 
+                                                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                                        }`}
+                                    >
+                                        {t(role)}
+                                    </button>
+                                ))}
+                            </div>
+                        </div>
+
+                        {/* 登入按鈕 */}
+                        <button
+                            onClick={handleLogin}
+                            disabled={!username.trim()}
+                            className={`w-full py-4 rounded-xl font-bold text-white text-lg transition-all ${
+                                username.trim() 
+                                    ? 'bg-blue-600 hover:bg-blue-700 shadow-lg hover:shadow-xl' 
+                                    : 'bg-gray-300 cursor-not-allowed'
+                            }`}
+                        >
+                            {t('login')} →
+                        </button>
+
+                        {/* Demo 提示 */}
+                        <div className="mt-6 p-4 bg-gray-50 rounded-xl text-center text-sm text-gray-600">
+                            <p className="font-semibold mb-1">Demo Account</p>
+                            <p>輸入任意名稱即可登入測試</p>
+                        </div>
+                    </div>
+                </div>
+            );
+        }
+
+        // ==================== 導航欄 ====================
+        function Navbar({ setCurrentUser }) {
+            const { t, language, setLanguage, currentUser } = useContext(AppContext);
+
+            return (
+                <nav className="bg-white border-b border-gray-200 sticky top-0 z-50 shadow-sm">
+                    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                        <div className="flex justify-between items-center h-16">
+                            {/* Logo & Title */}
+                            <div className="flex items-center space-x-4">
+                                <div className="w-10 h-10 bg-blue-600 rounded-lg flex items-center justify-center text-white font-bold">
+                                    AP
+                                </div>
+                                <div>
+                                    <h1 className="text-lg font-bold text-gray-800">{t('appTitle')}</h1>
+                                    <p className="text-xs text-gray-500">APQP 3rd Edition</p>
+                                </div>
+                            </div>
+
+                            {/* 右側功能區 */}
+                            <div className="flex items-center space-x-4">
+                                {/* 語言切換 */}
+                                <select 
+                                    value={language} 
+                                    onChange={(e) => setLanguage(e.target.value)}
+                                    className="px-3 py-2 border border-gray-300 rounded-lg text-sm lang-select focus:outline-none focus:border-blue-500"
+                                >
+                                    <option value="zh">中文</option>
+                                    <option value="en">EN</option>
+                                    <option value="th">TH</option>
+                                </select>
+
+                                {/* 使用者資訊 */}
+                                <div className="flex items-center space-x-3 pl-4 border-l border-gray-300">
+                                    <div className="text-right">
+                                        <div className="text-sm font-semibold text-gray-800">{currentUser.username}</div>
+                                        <div className="text-xs text-gray-500">{t(currentUser.role)} · {t(currentUser.department)}</div>
+                                    </div>
+                                    <button
+                                        onClick={() => setCurrentUser(null)}
+                                        className="px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition font-medium text-sm"
+                                    >
+                                        {t('logout')}
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </nav>
+            );
+        }
+
+        // ==================== Dashboard 主頁 ====================
+        function Dashboard({ filteredProjects, searchTerm, setSearchTerm, filterStatus, setFilterStatus }) {
+            const { t, projects } = useContext(AppContext);
+
+            // 統計數據
+            const stats = {
+                total: projects.length,
+                active: projects.filter(p => p.status === 'inProgress').length,
+                completed: projects.filter(p => p.status === 'completed').length,
+                overdue: projects.filter(p => p.status === 'overdue').length,
+            };
+
+            return (
+                <div className="space-y-8 fade-in">
+                    {/* 頁面標題 */}
+                    <div className="flex justify-between items-center">
+                        <div>
+                            <h2 className="text-3xl font-bold text-gray-800">{t('dashboard')}</h2>
+                            <p className="text-gray-600 mt-1">總覽所有專案的進度與狀態</p>
+                        </div>
+                        <button className="px-6 py-3 bg-blue-600 text-white rounded-xl font-semibold hover:bg-blue-700 transition shadow-lg hover:shadow-xl">
+                            + {t('newProject')}
+                        </button>
+                    </div>
+
+                    {/* 統計卡片 */}
+                    <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+                        <StatCard 
+                            title={t('totalProjects')}
+                            value={stats.total}
+                            icon="📊"
+                            color="blue"
+                        />
+                        <StatCard 
+                            title={t('activeProjects')}
+                            value={stats.active}
+                            icon="🔄"
+                            color="blue"
+                        />
+                        <StatCard 
+                            title={t('completedProjects')}
+                            value={stats.completed}
+                            icon="✅"
+                            color="green"
+                        />
+                        <StatCard 
+                            title={t('overdueProjects')}
+                            value={stats.overdue}
+                            icon="⚠️"
+                            color="red"
+                        />
+                    </div>
+
+                    {/* 搜尋與篩選 */}
+                    <div className="bg-white rounded-xl shadow-md p-6">
+                        <div className="flex flex-col md:flex-row gap-4">
+                            {/* 搜尋框 */}
+                            <div className="flex-1">
+                                <input
+                                    type="text"
+                                    placeholder={t('search')}
+                                    value={searchTerm}
+                                    onChange={(e) => setSearchTerm(e.target.value)}
+                                    className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-blue-500 focus:outline-none transition"
+                                />
+                            </div>
+
+                            {/* 狀態篩選 */}
+                            <div className="flex gap-2">
+                                {['all', 'pending', 'inProgress', 'completed', 'overdue'].map(status => (
+                                    <button
+                                        key={status}
+                                        onClick={() => setFilterStatus(status)}
+                                        className={`px-4 py-3 rounded-xl font-medium transition ${
+                                            filterStatus === status
+                                                ? 'bg-blue-600 text-white shadow-lg'
+                                                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                                        }`}
+                                    >
+                                        {status === 'all' ? '全部' : t(status)}
+                                    </button>
+                                ))}
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* 專案列表 */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                        {filteredProjects.map(project => (
+                            <ProjectCard key={project.id} project={project} />
+                        ))}
+                    </div>
+
+                    {/* 空狀態 */}
+                    {filteredProjects.length === 0 && (
+                        <div className="text-center py-16">
+                            <div className="text-6xl mb-4">🔍</div>
+                            <h3 className="text-xl font-semibold text-gray-800 mb-2">找不到符合的專案</h3>
+                            <p className="text-gray-600">請嘗試調整搜尋條件或篩選器</p>
+                        </div>
+                    )}
+                </div>
+            );
+        }
+
+        // ==================== 統計卡片 ====================
+        function StatCard({ title, value, icon, color }) {
+            const colorClasses = {
+                blue: 'from-blue-500 to-blue-600',
+                green: 'from-green-500 to-green-600',
+                red: 'from-red-500 to-red-600',
+                orange: 'from-orange-500 to-orange-600',
+            };
+
+            return (
+                <div className={`bg-gradient-to-br ${colorClasses[color]} rounded-xl shadow-lg p-6 text-white`}>
+                    <div className="flex justify-between items-start">
+                        <div>
+                            <p className="text-white/80 text-sm font-medium mb-1">{title}</p>
+                            <p className="text-4xl font-bold">{value}</p>
+                        </div>
+                        <div className="text-4xl opacity-80">{icon}</div>
+                    </div>
+                </div>
+            );
+        }
+
+        // ==================== 專案卡片 ====================
+        function ProjectCard({ project }) {
+            const { t, handleViewProject } = useContext(AppContext);
+
+            const statusConfig = {
+                pending: { label: t('pending'), className: 'badge-pending' },
+                inProgress: { label: t('inProgress'), className: 'badge-inProgress' },
+                completed: { label: t('completed'), className: 'badge-completed' },
+                overdue: { label: t('overdue'), className: 'badge-overdue' },
+            };
+
+            const status = statusConfig[project.status];
+
+            return (
+                <div className="project-card bg-white rounded-xl shadow-md overflow-hidden">
+                    {/* 卡片頭部 */}
+                    <div className="bg-gradient-to-r from-blue-500 to-purple-600 p-4 text-white">
+                        <div className="flex justify-between items-start mb-2">
+                            <div className="flex-1">
+                                <h3 className="font-bold text-lg mb-1 line-clamp-1">{project.partName}</h3>
+                                <p className="text-sm text-white/90">{project.partNumber}</p>
+                            </div>
+                            <span className={`badge ${status.className}`}>{status.label}</span>
+                        </div>
+                    </div>
+
+                    {/* 卡片內容 */}
+                    <div className="p-5">
+                        {/* 進度環形圖 */}
+                        <div className="flex items-center justify-center mb-4">
+                            <ProgressRing progress={project.progress} size={100} />
+                        </div>
+
+                        {/* 階段指示器 */}
+                        <div className="mb-4">
+                            <div className="flex justify-between text-xs text-gray-600 mb-2">
+                                <span>{t('stage')}</span>
+                                <span className="font-semibold">{project.stage} / {project.totalStages}</span>
+                            </div>
+                            <div className="flex gap-1">
+                                {[1, 2, 3, 4, 5].map(stage => (
+                                    <div 
+                                        key={stage}
+                                        className={`h-2 flex-1 rounded-full ${
+                                            stage <= project.stage ? 'bg-blue-500' : 'bg-gray-200'
+                                        }`}
+                                    />
+                                ))}
+                            </div>
+                        </div>
+
+                        {/* 詳細資訊 */}
+                        <div className="space-y-2 text-sm mb-4">
+                            <div className="flex justify-between">
+                                <span className="text-gray-600">{t('revision')}:</span>
+                                <span className="font-semibold">{project.revision}</span>
+                            </div>
+                            <div className="flex justify-between">
+                                <span className="text-gray-600">{t('material')}:</span>
+                                <span className="font-semibold">{project.material}</span>
+                            </div>
+                            <div className="flex justify-between">
+                                <span className="text-gray-600">APQP:</span>
+                                <span className="font-semibold text-blue-600">{project.apqpCompleted}/{project.apqpTotal}</span>
+                            </div>
+                            <div className="flex justify-between">
+                                <span className="text-gray-600">PPAP:</span>
+                                <span className="font-semibold text-blue-600">{project.ppapCompleted}/{project.ppapTotal}</span>
+                            </div>
+                        </div>
+
+                        {/* 設備標籤 */}
+                        <div className="flex flex-wrap gap-2 mb-4">
+                            {project.equipment.map((eq, i) => (
+                                <span key={i} className="text-xs bg-gray-100 px-3 py-1 rounded-full text-gray-700">
+                                    {eq}
+                                </span>
+                            ))}
+                        </div>
+
+                        {/* 操作按鈕 */}
+                        <button 
+                            onClick={() => handleViewProject(project)}
+                            className="w-full py-3 bg-blue-600 text-white rounded-lg font-semibold hover:bg-blue-700 transition"
+                        >
+                            {t('viewDetail')} →
+                        </button>
+                    </div>
+                </div>
+            );
+        }
+
+        // ==================== 進度環形圖 ====================
+        function ProgressRing({ progress, size = 120 }) {
+            const strokeWidth = 8;
+            const radius = (size - strokeWidth) / 2;
+            const circumference = 2 * Math.PI * radius;
+            const offset = circumference - (progress / 100) * circumference;
+
+            return (
+                <div className="relative" style={{ width: size, height: size }}>
+                    <svg className="progress-ring" width={size} height={size}>
+                        {/* 背景圓環 */}
+                        <circle
+                            cx={size / 2}
+                            cy={size / 2}
+                            r={radius}
+                            stroke="#e5e7eb"
+                            strokeWidth={strokeWidth}
+                            fill="none"
+                        />
+                        {/* 進度圓環 */}
+                        <circle
+                            cx={size / 2}
+                            cy={size / 2}
+                            r={radius}
+                            stroke="#3b82f6"
+                            strokeWidth={strokeWidth}
+                            fill="none"
+                            strokeDasharray={circumference}
+                            strokeDashoffset={offset}
+                            strokeLinecap="round"
+                            style={{ transition: 'stroke-dashoffset 0.5s ease' }}
+                        />
+                    </svg>
+                    {/* 中間文字 */}
+                    <div className="absolute inset-0 flex flex-col items-center justify-center">
+                        <span className="text-3xl font-bold text-gray-800">{progress}%</span>
+                        <span className="text-xs text-gray-500">完成度</span>
+                    </div>
+                </div>
+            );
+        }
+
+        // ==================== 專案詳情頁面 ====================
+        function ProjectDetail() {
+            const { t, selectedProject, handleBackToDashboard } = useContext(AppContext);
+            const [activeTab, setActiveTab] = useState('psw');
+
+            if (!selectedProject) {
+                return (
+                    <div className="text-center py-16">
+                        <div className="text-6xl mb-4">📋</div>
+                        <h3 className="text-xl font-semibold text-gray-800 mb-2">請選擇一個專案</h3>
+                        <button
+                            onClick={handleBackToDashboard}
+                            className="mt-4 px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+                        >
+                            {t('backToDashboard')}
+                        </button>
+                    </div>
+                );
+            }
+
+            const tabs = [
+                { id: 'psw', label: t('pswInfo'), icon: '📄' },
+                { id: 'apqp', label: t('apqpStages'), icon: '📊' },
+                { id: 'ppap', label: t('ppapChecklist'), icon: '✅' },
+                { id: 'documents', label: t('documents'), icon: '📁' },
+            ];
+
+            return (
+                <div className="space-y-6 fade-in">
+                    {/* 頁面頭部 */}
+                    <div className="bg-white rounded-xl shadow-md p-6">
+                        <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-4">
+                                <button
+                                    onClick={handleBackToDashboard}
+                                    className="p-2 hover:bg-gray-100 rounded-lg transition"
+                                >
+                                    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                                    </svg>
+                                </button>
+                                <div>
+                                    <h2 className="text-3xl font-bold text-gray-800">{selectedProject.partName}</h2>
+                                    <p className="text-gray-600 mt-1">{selectedProject.partNumber} · {selectedProject.revision}</p>
+                                </div>
+                            </div>
+                            <div className="flex gap-3">
+                                <button className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition font-semibold">
+                                    {t('exportExcel')}
+                                </button>
+                                <button className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition font-semibold">
+                                    {t('save')}
+                                </button>
+                            </div>
+                        </div>
+
+                        {/* 快速統計 */}
+                        <div className="mt-6 grid grid-cols-4 gap-4">
+                            <div className="text-center p-4 bg-blue-50 rounded-lg">
+                                <div className="text-2xl font-bold text-blue-600">{selectedProject.stage}/5</div>
+                                <div className="text-sm text-gray-600">{t('stage')}</div>
+                            </div>
+                            <div className="text-center p-4 bg-purple-50 rounded-lg">
+                                <div className="text-2xl font-bold text-purple-600">{selectedProject.progress}%</div>
+                                <div className="text-sm text-gray-600">{t('progress')}</div>
+                            </div>
+                            <div className="text-center p-4 bg-green-50 rounded-lg">
+                                <div className="text-2xl font-bold text-green-600">{selectedProject.apqpCompleted}/{selectedProject.apqpTotal}</div>
+                                <div className="text-sm text-gray-600">APQP</div>
+                            </div>
+                            <div className="text-center p-4 bg-orange-50 rounded-lg">
+                                <div className="text-2xl font-bold text-orange-600">{selectedProject.ppapCompleted}/{selectedProject.ppapTotal}</div>
+                                <div className="text-sm text-gray-600">PPAP</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Tab 導航 */}
+                    <div className="bg-white rounded-xl shadow-md overflow-hidden">
+                        <div className="flex border-b border-gray-200">
+                            {tabs.map(tab => (
+                                <button
+                                    key={tab.id}
+                                    onClick={() => setActiveTab(tab.id)}
+                                    className={`flex-1 px-6 py-4 font-semibold transition flex items-center justify-center gap-2 ${
+                                        activeTab === tab.id
+                                            ? 'text-blue-600 border-b-3 border-blue-600 bg-blue-50'
+                                            : 'text-gray-600 hover:text-blue-500 hover:bg-gray-50'
+                                    }`}
+                                >
+                                    <span className="text-xl">{tab.icon}</span>
+                                    <span>{tab.label}</span>
+                                </button>
+                            ))}
+                        </div>
+
+                        {/* Tab 內容 */}
+                        <div className="p-6">
+                            {activeTab === 'psw' && <PSWTab project={selectedProject} />}
+                            {activeTab === 'apqp' && <APQPTab project={selectedProject} />}
+                            {activeTab === 'ppap' && <PPAPTab project={selectedProject} />}
+                            {activeTab === 'documents' && <DocumentsTab project={selectedProject} />}
+                        </div>
+                    </div>
+                </div>
+            );
+        }
+
+        // ==================== PSW Tab (基本資料) ====================
+        function PSWTab({ project }) {
+            const { t } = useContext(AppContext);
+            const [formData, setFormData] = useState({
+                partName: project.partName,
+                partNumber: project.partNumber,
+                revision: project.revision,
+                weight: '0.0245',
+                material: project.material,
+                location: project.location,
+                drawingDate: '2024-01-15',
+                submissionLevel: 'Level 3',
+            });
+            const [weightError, setWeightError] = useState('');
+
+            const handleWeightChange = (value) => {
+                setFormData({ ...formData, weight: value });
+                if (!/^\d+\.\d{4}$/.test(value)) {
+                    setWeightError(t('weightFormat'));
+                } else {
+                    setWeightError('');
+                }
+            };
+
+            return (
+                <div className="space-y-6">
+                    <h3 className="text-xl font-bold text-gray-800 mb-4">PSW 封面資訊</h3>
+                    
+                    <div className="grid grid-cols-2 gap-6">
+                        <div>
+                            <label className="block text-sm font-semibold text-gray-700 mb-2">{t('partName')}</label>
+                            <input
+                                type="text"
+                                value={formData.partName}
+                                onChange={(e) => setFormData({ ...formData, partName: e.target.value })}
+                                className="w-full px-4 py-3 border-2 border-gray-200 rounded-lg focus:border-blue-500 focus:outline-none"
+                            />
+                        </div>
+                        <div>
+                            <label className="block text-sm font-semibold text-gray-700 mb-2">{t('partNumber')}</label>
+                            <input
+                                type="text"
+                                value={formData.partNumber}
+                                className="w-full px-4 py-3 border-2 border-gray-200 rounded-lg bg-gray-50"
+                                readOnly
+                            />
+                        </div>
+                        <div>
+                            <label className="block text-sm font-semibold text-gray-700 mb-2">{t('revision')}</label>
+                            <input
+                                type="text"
+                                value={formData.revision}
+                                onChange={(e) => setFormData({ ...formData, revision: e.target.value })}
+                                className="w-full px-4 py-3 border-2 border-gray-200 rounded-lg focus:border-blue-500 focus:outline-none"
+                            />
+                        </div>
+                        <div>
+                            <label className="block text-sm font-semibold text-gray-700 mb-2">{t('weight')} *</label>
+                            <input
+                                type="text"
+                                value={formData.weight}
+                                onChange={(e) => handleWeightChange(e.target.value)}
+                                className={`w-full px-4 py-3 border-2 rounded-lg focus:outline-none ${
+                                    weightError ? 'border-red-500 focus:border-red-500' : 'border-gray-200 focus:border-blue-500'
+                                }`}
+                                placeholder="0.0000"
+                            />
+                            {weightError && <p className="text-red-500 text-xs mt-1">{weightError}</p>}
+                        </div>
+                        <div>
+                            <label className="block text-sm font-semibold text-gray-700 mb-2">{t('material')}</label>
+                            <input
+                                type="text"
+                                value={formData.material}
+                                onChange={(e) => setFormData({ ...formData, material: e.target.value })}
+                                className="w-full px-4 py-3 border-2 border-gray-200 rounded-lg focus:border-blue-500 focus:outline-none"
+                            />
+                        </div>
+                        <div>
+                            <label className="block text-sm font-semibold text-gray-700 mb-2">{t('location')}</label>
+                            <input
+                                type="text"
+                                value={formData.location}
+                                onChange={(e) => setFormData({ ...formData, location: e.target.value })}
+                                className="w-full px-4 py-3 border-2 border-gray-200 rounded-lg focus:border-blue-500 focus:outline-none"
+                            />
+                        </div>
+                        <div>
+                            <label className="block text-sm font-semibold text-gray-700 mb-2">{t('drawingDate')}</label>
+                            <input
+                                type="date"
+                                value={formData.drawingDate}
+                                onChange={(e) => setFormData({ ...formData, drawingDate: e.target.value })}
+                                className="w-full px-4 py-3 border-2 border-gray-200 rounded-lg focus:border-blue-500 focus:outline-none"
+                            />
+                        </div>
+                        <div>
+                            <label className="block text-sm font-semibold text-gray-700 mb-2">{t('submissionLevel')}</label>
+                            <select
+                                value={formData.submissionLevel}
+                                onChange={(e) => setFormData({ ...formData, submissionLevel: e.target.value })}
+                                className="w-full px-4 py-3 border-2 border-gray-200 rounded-lg focus:border-blue-500 focus:outline-none"
+                            >
+                                <option value="Level 1">Level 1</option>
+                                <option value="Level 2">Level 2</option>
+                                <option value="Level 3">Level 3</option>
+                                <option value="Level 4">Level 4</option>
+                                <option value="Level 5">Level 5</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    {/* 簽名區域 */}
+                    <div className="border-t border-gray-200 pt-6 mt-6">
+                        <h4 className="text-lg font-bold mb-4">{t('signatureUpload')}</h4>
+                        <div className="grid grid-cols-2 gap-6">
+                            <FileUploadZone label="供應商簽名 (Supplier Signature)" />
+                            <FileUploadZone label="客戶簽名 (Customer Signature)" />
+                        </div>
+                    </div>
+
+                    {/* 設備選擇 */}
+                    <div className="border-t border-gray-200 pt-6 mt-6">
+                        <h4 className="text-lg font-bold mb-4">關聯設備</h4>
+                        <div className="flex flex-wrap gap-3">
+                            {project.equipment.map((eq, i) => (
+                                <div key={i} className="flex items-center gap-2 bg-blue-50 px-4 py-2 rounded-lg">
+                                    <span className="text-blue-600 font-medium">{eq}</span>
+                                    <button className="text-red-500 hover:text-red-700">×</button>
+                                </div>
+                            ))}
+                            <button className="px-4 py-2 border-2 border-dashed border-gray-300 rounded-lg text-gray-600 hover:border-blue-500 hover:text-blue-600 transition">
+                                + 新增設備
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            );
+        }
+
+        // ==================== APQP Tab (五階段追蹤) ====================
+        function APQPTab({ project }) {
+            const { t, currentUser } = useContext(AppContext);
+            const [notification, setNotification] = useState(null);
+
+            const apqpStages = [
+                {
+                    stage: 1,
+                    title: t('stage1'),
+                    docs: ['客戶特殊要求 (CSR)', '初步風險評估', '初步BOM'],
+                    dept: 'sales',
+                    approved: true,
+                    completed: true,
+                },
+                {
+                    stage: 2,
+                    title: t('stage2'),
+                    docs: ['可行性評估', '模具設計圖', '模具製作排程'],
+                    dept: 'engineering',
+                    approved: true,
+                    completed: true,
+                },
+                {
+                    stage: 3,
+                    title: t('stage3'),
+                    docs: ['製程流程圖 (PFD)', 'PFMEA (AIAG-VDA版)', '試產前控制計畫', 'SOP'],
+                    dept: 'engineering',
+                    approved: false,
+                    completed: true,
+                },
+                {
+                    stage: 4,
+                    title: t('stage4'),
+                    docs: ['MSA報告 (Gage R&R)', '初始製程能力 (Cpk)', 'FAI全尺寸報告'],
+                    dept: 'quality',
+                    approved: false,
+                    completed: false,
+                },
+                {
+                    stage: 5,
+                    title: t('stage5'),
+                    docs: ['量產控制計畫', '良率分析', '經驗總結 (Lessons Learned)'],
+                    dept: 'quality',
+                    approved: false,
+                    completed: false,
+                },
+            ];
+
+            const handleApprove = (stage) => {
+                setNotification(`✅ ${t('approveSuccess')}: 階段 ${stage}`);
+                setTimeout(() => setNotification(null), 3000);
+            };
+
+            const isLocked = (stage) => {
+                if (stage === 1) return false;
+                return !apqpStages[stage - 2].approved;
+            };
+
+            return (
+                <div className="space-y-4">
+                    {notification && (
+                        <div className="bg-green-50 border-2 border-green-500 text-green-700 px-6 py-3 rounded-lg font-semibold">
+                            {notification}
+                        </div>
+                    )}
+
+                    {apqpStages.map((stageData, index) => {
+                        const locked = isLocked(stageData.stage);
+                        
+                        return (
+                            <div
+                                key={stageData.stage}
+                                className={`border-2 border-gray-200 rounded-xl p-5 ${locked ? 'opacity-50 bg-gray-50' : 'bg-white'}`}
+                            >
+                                <div className="flex items-center justify-between mb-4">
+                                    <div className="flex items-center gap-4">
+                                        <div className={`w-12 h-12 rounded-full flex items-center justify-center font-bold text-white text-lg ${
+                                            stageData.approved ? 'bg-green-500' : 
+                                            stageData.completed ? 'bg-blue-500' : 'bg-gray-400'
+                                        }`}>
+                                            {stageData.stage}
+                                        </div>
+                                        <div>
+                                            <h3 className="font-bold text-lg text-gray-800">{stageData.title}</h3>
+                                            <p className="text-sm text-gray-600">
+                                                {t('responsible')}: <span className="font-semibold">{t(stageData.dept)}</span>
+                                            </p>
+                                        </div>
+                                    </div>
+                                    <div className="flex gap-2">
+                                        {stageData.approved ? (
+                                            <span className="badge badge-completed">{t('approved')}</span>
+                                        ) : stageData.completed ? (
+                                            <>
+                                                <span className="badge badge-inProgress">{t('underReview')}</span>
+                                                {currentUser.role === 'manager' && (
+                                                    <button
+                                                        onClick={() => handleApprove(stageData.stage)}
+                                                        className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition font-medium"
+                                                    >
+                                                        {t('approve')}
+                                                    </button>
+                                                )}
+                                            </>
+                                        ) : (
+                                            <span className="badge badge-pending">{t('inProgress')}</span>
+                                        )}
+                                    </div>
+                                </div>
+
+                                {locked && (
+                                    <div className="mb-4 bg-yellow-50 border border-yellow-300 rounded-lg p-3 text-sm text-yellow-800">
+                                        {t('stageLocked')}
+                                    </div>
+                                )}
+
+                                <div className="space-y-2">
+                                    {stageData.docs.map((doc, i) => (
+                                        <div
+                                            key={i}
+                                            className="flex items-center justify-between bg-gray-50 rounded-lg p-4 hover:bg-gray-100 transition"
+                                        >
+                                            <div className="flex items-center gap-3">
+                                                <div className="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center text-blue-600 font-bold">
+                                                    {i + 1}
+                                                </div>
+                                                <span className="font-medium text-gray-800">{doc}</span>
+                                            </div>
+                                            <div className="flex gap-2">
+                                                <button className="text-sm text-blue-600 hover:underline">{t('viewDocument')}</button>
+                                                {!locked && (
+                                                    <>
+                                                        <button className="text-sm text-blue-600 hover:underline">{t('edit')}</button>
+                                                        <button className="text-sm text-blue-600 hover:underline">{t('upload')}</button>
+                                                    </>
+                                                )}
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        );
+                    })}
+                </div>
+            );
+        }
+
+        // ==================== PPAP Tab (18項查核) ====================
+        function PPAPTab({ project }) {
+            const { t } = useContext(AppContext);
+
+            const ppapItems = [
+                { id: 1, name: t('ppapItem1'), checkpoint: '零件圖、模具圖、BOM', dept: 'engineering', status: 'completed' },
+                { id: 2, name: t('ppapItem2'), checkpoint: 'ECN/ECR (如有)', dept: 'engineering', status: 'completed' },
+                { id: 3, name: t('ppapItem3'), checkpoint: '客戶簽署之圖面', dept: 'sales', status: 'completed' },
+                { id: 4, name: t('ppapItem4'), checkpoint: '如本司負責設計則附', dept: 'engineering', status: 'completed' },
+                { id: 5, name: t('ppapItem5'), checkpoint: '沖壓段流程', dept: 'engineering', status: 'completed' },
+                { id: 6, name: t('ppapItem6'), checkpoint: '含防錯邏輯', dept: 'quality', status: 'completed' },
+                { id: 7, name: t('ppapItem7'), checkpoint: '含特殊特性管制', dept: 'quality', status: 'completed' },
+                { id: 8, name: t('ppapItem8'), checkpoint: 'OMM、卡尺檢驗', dept: 'quality', status: 'completed' },
+                { id: 9, name: t('ppapItem9'), checkpoint: '5pcs FAI 合格', dept: 'quality', status: 'inProgress' },
+                { id: 10, name: t('ppapItem10'), checkpoint: 'MTR, SGS, RoHS', dept: 'quality', status: 'pending' },
+                { id: 11, name: t('ppapItem11'), checkpoint: '50pcs 以上統計', dept: 'quality', status: 'pending' },
+                { id: 12, name: t('ppapItem12'), checkpoint: 'SGS 證書/證照', dept: 'quality', status: 'pending' },
+                { id: 13, name: t('ppapItem13'), checkpoint: '外觀限度樣品照片', dept: 'quality', status: 'pending' },
+                { id: 14, name: t('ppapItem14'), checkpoint: '實際試產零件', dept: 'production', status: 'pending' },
+                { id: 15, name: t('ppapItem15'), checkpoint: 'Master Sample 留存', dept: 'quality', status: 'pending' },
+                { id: 16, name: t('ppapItem16'), checkpoint: '檢具/治具清單', dept: 'quality', status: 'pending' },
+                { id: 17, name: t('ppapItem17'), checkpoint: '業務確認文件', dept: 'sales', status: 'pending' },
+                { id: 18, name: t('ppapItem18'), checkpoint: '完成簽署之封面', dept: 'management', status: 'pending' },
+            ];
+
+            return (
+                <div className="overflow-x-auto">
+                    <table className="w-full">
+                        <thead className="bg-gray-100">
+                            <tr>
+                                <th className="px-4 py-3 text-left text-sm font-bold text-gray-700">序號</th>
+                                <th className="px-4 py-3 text-left text-sm font-bold text-gray-700">PPAP項目</th>
+                                <th className="px-4 py-3 text-left text-sm font-bold text-gray-700">{t('checkpoint')}</th>
+                                <th className="px-4 py-3 text-left text-sm font-bold text-gray-700">{t('responsible')}</th>
+                                <th className="px-4 py-3 text-left text-sm font-bold text-gray-700">{t('status')}</th>
+                                <th className="px-4 py-3 text-left text-sm font-bold text-gray-700">{t('actions')}</th>
+                            </tr>
+                        </thead>
+                        <tbody className="divide-y divide-gray-200">
+                            {ppapItems.map((item) => (
+                                <tr key={item.id} className="hover:bg-gray-50 transition">
+                                    <td className="px-4 py-4 text-sm font-semibold text-gray-800">{item.id}</td>
+                                    <td className="px-4 py-4 text-sm font-medium text-gray-800">{item.name}</td>
+                                    <td className="px-4 py-4 text-sm text-gray-600">{item.checkpoint}</td>
+                                    <td className="px-4 py-4 text-sm">
+                                        <span className="badge badge-inProgress">{t(item.dept)}</span>
+                                    </td>
+                                    <td className="px-4 py-4 text-sm">
+                                        {item.status === 'completed' ? (
+                                            <span className="badge badge-completed">✓ {t('completed')}</span>
+                                        ) : item.status === 'inProgress' ? (
+                                            <span className="badge badge-inProgress">{t('inProgress')}</span>
+                                        ) : (
+                                            <span className="badge badge-pending">{t('pending')}</span>
+                                        )}
+                                    </td>
+                                    <td className="px-4 py-4 text-sm">
+                                        <div className="flex gap-2">
+                                            <button className="text-blue-600 hover:underline font-medium">{t('viewDocument')}</button>
+                                            <button className="text-blue-600 hover:underline font-medium">{t('upload')}</button>
+                                        </div>
+                                    </td>
+                                </tr>
+                            ))}
+                        </tbody>
+                    </table>
+                </div>
+            );
+        }
+
+        // ==================== Documents Tab (文件庫) ====================
+        function DocumentsTab({ project }) {
+            const { t } = useContext(AppContext);
+
+            const mockDocuments = [
+                { id: 1, name: 'PFMEA_v2.pdf', type: 'PDF', size: '2.4 MB', uploadDate: '2024-05-12', uploadBy: 'eng_user' },
+                { id: 2, name: 'MSA_Report.xlsx', type: 'Excel', size: '1.8 MB', uploadDate: '2024-05-10', uploadBy: 'qa_user' },
+                { id: 3, name: '模具設計圖.jpg', type: 'Image', size: '856 KB', uploadDate: '2024-05-08', uploadBy: 'eng_user' },
+                { id: 4, name: 'Control_Plan_v3.pdf', type: 'PDF', size: '1.2 MB', uploadDate: '2024-05-05', uploadBy: 'qa_user' },
+            ];
+
+            return (
+                <div className="space-y-6">
+                    {/* 上傳區域 */}
+                    <FileUploadZone label={t('uploadFile')} />
+
+                    {/* 文件列表 */}
+                    <div>
+                        <h3 className="text-lg font-bold mb-4">已上傳文件 ({mockDocuments.length})</h3>
+                        <div className="space-y-3">
+                            {mockDocuments.map((doc) => (
+                                <div
+                                    key={doc.id}
+                                    className="flex items-center justify-between bg-white border-2 border-gray-200 rounded-lg p-4 hover:border-blue-500 transition"
+                                >
+                                    <div className="flex items-center gap-4">
+                                        <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center">
+                                            {doc.type === 'PDF' && <span className="text-2xl">📄</span>}
+                                            {doc.type === 'Excel' && <span className="text-2xl">📊</span>}
+                                            {doc.type === 'Image' && <span className="text-2xl">🖼️</span>}
+                                        </div>
+                                        <div>
+                                            <div className="font-semibold text-gray-800">{doc.name}</div>
+                                            <div className="text-sm text-gray-500">
+                                                {doc.size} · {t('uploadedDate')}: {doc.uploadDate} · {doc.uploadBy}
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div className="flex gap-2">
+                                        <button className="px-4 py-2 text-sm text-blue-600 hover:bg-blue-50 rounded-lg transition font-medium">
+                                            {t('download')}
+                                        </button>
+                                        <button className="px-4 py-2 text-sm text-red-600 hover:bg-red-50 rounded-lg transition font-medium">
+                                            {t('delete')}
+                                        </button>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                </div>
+            );
+        }
+
+        // ==================== 檔案上傳區 ====================
+        function FileUploadZone({ label }) {
+            const { t } = useContext(AppContext);
+            const [dragActive, setDragActive] = useState(false);
+
+            const handleDrag = (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                if (e.type === "dragenter" || e.type === "dragover") {
+                    setDragActive(true);
+                } else if (e.type === "dragleave") {
+                    setDragActive(false);
+                }
+            };
+
+            const handleDrop = (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                setDragActive(false);
+                if (e.dataTransfer.files && e.dataTransfer.files[0]) {
+                    alert(`${t('uploadSuccess')}: ${e.dataTransfer.files[0].name}`);
+                }
+            };
+
+            const handleChange = (e) => {
+                e.preventDefault();
+                if (e.target.files && e.target.files[0]) {
+                    alert(`${t('uploadSuccess')}: ${e.target.files[0].name}`);
+                }
+            };
+
+            return (
+                <div>
+                    <label className="block text-sm font-semibold text-gray-700 mb-2">{label}</label>
+                    <div
+                        className={`border-2 border-dashed rounded-xl p-8 text-center cursor-pointer transition ${
+                            dragActive ? 'border-blue-500 bg-blue-50' : 'border-gray-300 bg-gray-50 hover:border-blue-400'
+                        }`}
+                        onDragEnter={handleDrag}
+                        onDragLeave={handleDrag}
+                        onDragOver={handleDrag}
+                        onDrop={handleDrop}
+                    >
+                        <input
+                            type="file"
+                            accept=".jpg,.jpeg,.png,.pdf"
+                            onChange={handleChange}
+                            className="hidden"
+                            id={`file-upload-${label}`}
+                        />
+                        <label htmlFor={`file-upload-${label}`} className="cursor-pointer">
+                            <div className="text-gray-600">
+                                <div className="text-5xl mb-3">📁</div>
+                                <div className="font-semibold text-lg mb-1">{t('dragDropHint')}</div>
+                                <div className="text-sm text-gray-500">{t('supportedFormats')}</div>
+                            </div>
+                        </label>
+                    </div>
+                </div>
+            );
+        }
+
+        // ==================== 啟動應用 ====================
+        ReactDOM.render(<App />, document.getElementById('root'));
+    </script>
+</body>
+</html>
