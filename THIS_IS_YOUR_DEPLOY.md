@@ -38,7 +38,7 @@ git push -u origin main
 
 推送成功後：
 
-1. 前往：https://ayarfly-create.github.io/claude/
+1. 前往：https://github.com/ayarfly-create/claude/settings
 2. 點擊 `Settings` 標籤
 3. 左側選單找到 `Pages`
 4. Source 設定：
