@@ -429,6 +429,124 @@
         // ==================== Context ====================
         const AppContext = createContext();
 
+        // ==================== 模擬設備數據 ====================
+        const mockEquipment = [
+            {
+                id: 1,
+                name: "200T沖床-A01",
+                type: "沖床",
+                model: "AIDA NS1-200",
+                capacity: "200噸",
+                location: "精密沖壓 A 線",
+                status: "active",
+                purchaseDate: "2020-03-15",
+                lastMaintenance: "2024-04-10",
+                nextMaintenance: "2024-07-10",
+                usageHours: 12450,
+                projects: ["P/N-12345678", "P/N-11223344"],
+                history: [
+                    { date: "2024-04-10", type: "維護", description: "定期保養、更換液壓油", operator: "維護部" },
+                    { date: "2024-03-01", type: "校正", description: "精度校正", operator: "品保部" },
+                    { date: "2024-01-15", type: "維修", description: "更換壓力感測器", operator: "維護部" },
+                ],
+                specifications: {
+                    maxForce: "200噸",
+                    strokeLength: "150mm",
+                    speedRange: "20-120 SPM",
+                    boltsterSize: "800x600mm",
+                },
+                cpkData: [
+                    { date: "2024-05-01", value: 1.45, status: "合格" },
+                    { date: "2024-04-01", value: 1.38, status: "合格" },
+                    { date: "2024-03-01", value: 1.52, status: "合格" },
+                ]
+            },
+            {
+                id: 2,
+                name: "200T沖床-B02",
+                type: "沖床",
+                model: "KOMATSU H1F-200",
+                capacity: "200噸",
+                location: "精密沖壓 B 線",
+                status: "maintenance",
+                purchaseDate: "2021-06-20",
+                lastMaintenance: "2024-05-15",
+                nextMaintenance: "2024-08-15",
+                usageHours: 8920,
+                projects: ["P/N-87654321", "P/N-55667788"],
+                history: [
+                    { date: "2024-05-15", type: "維護", description: "年度大保養", operator: "維護部" },
+                    { date: "2024-02-20", type: "校正", description: "精度校正", operator: "品保部" },
+                ],
+                specifications: {
+                    maxForce: "200噸",
+                    strokeLength: "180mm",
+                    speedRange: "15-100 SPM",
+                    boltsterSize: "900x700mm",
+                },
+                cpkData: [
+                    { date: "2024-04-15", value: 1.41, status: "合格" },
+                    { date: "2024-03-15", value: 1.35, status: "合格" },
+                ]
+            },
+            {
+                id: 3,
+                name: "OMM-M02",
+                type: "量測儀",
+                model: "Mitutoyo QV-404 Pro",
+                capacity: "精度 ±0.001mm",
+                location: "品保室",
+                status: "active",
+                purchaseDate: "2022-01-10",
+                lastMaintenance: "2024-05-01",
+                nextMaintenance: "2024-08-01",
+                usageHours: 5630,
+                projects: ["P/N-12345678", "P/N-55667788"],
+                history: [
+                    { date: "2024-05-01", type: "校正", description: "外部校正證書更新", operator: "品保部" },
+                    { date: "2024-02-01", type: "維護", description: "清潔保養", operator: "品保部" },
+                ],
+                specifications: {
+                    measurementRange: "400x400x300mm",
+                    accuracy: "±(2+L/200)μm",
+                    resolution: "0.1μm",
+                    probeType: "觸發式探針",
+                },
+                msaData: [
+                    { date: "2024-05-01", gageRR: 8.5, status: "合格" },
+                    { date: "2024-04-01", gageRR: 9.2, status: "合格" },
+                    { date: "2024-03-01", gageRR: 7.8, status: "合格" },
+                ]
+            },
+            {
+                id: 4,
+                name: "OMM-M03",
+                type: "量測儀",
+                model: "Keyence IM-8000",
+                capacity: "精度 ±0.002mm",
+                location: "品保室",
+                status: "active",
+                purchaseDate: "2023-03-20",
+                lastMaintenance: "2024-04-20",
+                nextMaintenance: "2024-07-20",
+                usageHours: 3210,
+                projects: ["P/N-55667788"],
+                history: [
+                    { date: "2024-04-20", type: "校正", description: "標準件校正", operator: "品保部" },
+                ],
+                specifications: {
+                    measurementRange: "600x400x300mm",
+                    accuracy: "±3μm",
+                    resolution: "0.5μm",
+                    probeType: "非接觸式光學",
+                },
+                msaData: [
+                    { date: "2024-04-20", gageRR: 11.2, status: "不合格" },
+                    { date: "2024-03-20", gageRR: 9.8, status: "合格" },
+                ]
+            },
+        ];
+
         // ==================== 模擬專案數據 ====================
         const mockProjects = [
             {
