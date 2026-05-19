@@ -49,7 +49,7 @@ git push -u origin main
 ⏳ 等待 1-2 分鐘後，您的系統將發布於：
 
 ```
-https://ayarfly-create.github.io/aqpq-ppap-system/
+https://ayarfly-create.github.io/claude/
 ```
 
 ---
